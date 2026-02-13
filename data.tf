@@ -7,3 +7,9 @@ data "aws_ami" "arangodb_ecs_ami" {
     values = ["amzn2-ami-ecs-hvm-*-x86_64-ebs"]
   }
 }
+
+data "aws_secretsmanager_secret" "arangodb_bootstrap" {
+  for_each = local.arangodb_bootstrap_secret_names
+
+  name = each.value
+}

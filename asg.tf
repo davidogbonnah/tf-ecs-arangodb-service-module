@@ -59,7 +59,7 @@ resource "aws_autoscaling_group" "arangodb_ecs_workers_asg" {
   name                = "arangodb-ecs-workers"
   desired_capacity    = 3
   min_size            = 3
-  max_size            = 4
+  max_size            = 5
   vpc_zone_identifier = var.private_subnet_ids
 
   protect_from_scale_in = true

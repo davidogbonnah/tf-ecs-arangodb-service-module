@@ -1,111 +1,155 @@
 variable "arangodb_agency_size" {
   description = "Agency size for the ArangoDB starter cluster."
-  type = number
+  type        = number
 }
 
 variable "arangodb_container_ports" {
   description = "Container ports exposed by the ArangoDB task."
-  type = list(string)
+  type        = list(string)
 }
 
 variable "arangodb_container_primary_port" {
   description = "Primary ArangoDB coordinator port behind the ALB."
-  type = number
+  type        = number
+}
+
+variable "private_subnet_cidrs" {
+  description = "CIDR blocks for private subnets allowed to access the internal ALB."
+  type        = list(string)
+  validation {
+    condition     = length(var.private_subnet_cidrs) > 0
+    error_message = "private_subnet_cidrs must contain at least one CIDR block."
+  }
 }
 
 variable "arangodb_cpu" {
   description = "CPU units for the ArangoDB task."
-  type = number
+  type        = number
 }
 
 variable "arangodb_data_volume_size" {
   description = "EBS data volume size in GiB for each ECS worker."
-  type = number
+  type        = number
 }
 
 variable "arangodb_data_volume_type" {
   description = "EBS volume type for ArangoDB data."
-  type = string
+  type        = string
 }
 
 variable "arangodb_desired_count" {
   description = "Desired number of ArangoDB tasks."
-  type = number
+  type        = number
 }
 
 variable "arangodb_health_check_path" {
   description = "HTTP path used for ArangoDB health checks."
-  type = string
+  type        = string
 }
 
 variable "arangodb_health_proxy_port" {
   description = "Port exposed by the health-proxy sidecar."
-  type = number
+  type        = number
 }
 
 variable "arangodb_memory" {
   description = "Memory (MiB) for the ArangoDB task."
-  type = number
+  type        = number
 }
 
 variable "arangodb_repository_url" {
   description = "ECR repository URL for the ArangoDB image."
-  type = string
+  type        = string
 }
 
 variable "arangodb_sd_namespace" {
   description = "Cloud Map namespace for ArangoDB starter discovery."
-  type = string
+  type        = string
 }
 
 variable "arangodb_sd_service_name" {
   description = "Cloud Map service name for ArangoDB starters."
-  type = string
+  type        = string
 }
 
 variable "arangodb_service_name" {
   description = "ArangoDB service name used for ECS and ALB resources."
-  type = string
+  type        = string
 }
 
 variable "arangodb_tag" {
   description = "ArangoDB image tag."
-  type = string
+  type        = string
+}
+
+variable "arangodb_bootstrap_enabled" {
+  description = "Whether to run the ArangoDB bootstrap sidecar."
+  type        = bool
+}
+
+variable "arangodb_bootstrap_config" {
+  description = "Static bootstrap config for users, databases, and collections (passwords referenced via env vars)."
+  type = object({
+    users = list(object({
+      username     = string
+      password_env = string
+      active       = optional(bool, true)
+    }))
+    databases = list(object({
+      name  = string
+      users = list(string)
+    }))
+    collections = list(object({
+      db   = string
+      name = string
+      type = optional(number)
+    }))
+  })
+}
+
+variable "arangodb_bootstrap_password_secrets" {
+  description = "Map of env var name -> Secrets Manager secret name or ARN for bootstrap passwords."
+  type        = map(string)
+}
+
+variable "arangodb_bootstrap_kms_key_arns" {
+  description = "Optional KMS key ARNs used to encrypt the SSM parameters."
+  type        = list(string)
 }
 
 variable "cluster_id" {
   description = "ECS cluster ID where ArangoDB is deployed."
-  type = string
+  type        = string
 }
 
 variable "cluster_name" {
   description = "ECS cluster name used by ECS agent bootstrap."
-  type = string
+  type        = string
 }
 
 variable "private_subnet_ids" {
   description = "Private subnet IDs for ECS tasks and EC2 capacity."
-  type = list(string)
+  type        = list(string)
 }
 
 variable "public_network_ip_range" {
   description = "CIDR blocks allowed to access the ArangoDB ALB."
-  type = list(string)
+  type        = list(string)
 }
 
 variable "public_subnet_ids" {
   description = "Public subnet IDs for the ArangoDB ALB."
-  type = list(string)
+  type        = list(string)
 }
 
 variable "region" {
   description = "AWS region for logging and resource configuration."
-  type = string
+  type        = string
 }
 
 variable "tags" {
   description = "Tags applied to module resources."
-  type = map(string)
+  type        = map(string)
 }
 
 variable "task_execution_role" {
@@ -115,15 +159,15 @@ variable "task_execution_role" {
 
 variable "task_execution_role_arn" {
   description = "IAM execution role ARN for ECS tasks."
-  type = string
+  type        = string
 }
 
 variable "task_role_arn" {
   description = "IAM task role ARN for ECS tasks."
-  type = string
+  type        = string
 }
 
 variable "vpc_id" {
   description = "VPC ID for ALB, security groups, and Cloud Map."
-  type = string
+  type        = string
 }

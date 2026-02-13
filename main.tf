@@ -1,14 +1,3 @@
-locals {
-  arangodb_number_of_cores = var.arangodb_cpu / 1024
-  arangodb_port_mappings = [
-    for port in var.arangodb_container_ports : {
-      containerPort = tonumber(port)
-      hostPort      = tonumber(port)
-      protocol      = "tcp"
-    }
-  ]
-}
-
 resource "random_password" "arangodb_jwt_secret" {
   length  = 64
   special = false # keep it simple for files/env vars
@@ -72,158 +61,7 @@ resource "aws_ecs_task_definition" "arangodb_td" {
     host_path = "/var/lib/arangodb"
   }
 
-  container_definitions = jsonencode([
-    {
-      name      = "${var.arangodb_service_name}-container"
-      image     = "${var.arangodb_repository_url}:${var.arangodb_tag}"
-      cpu       = var.arangodb_cpu
-      memory    = var.arangodb_memory
-      essential = true
-
-      portMappings = local.arangodb_port_mappings
-
-      mountPoints = [
-        {
-          sourceVolume  = "health-proxy-auth"
-          containerPath = "/run/health-proxy"
-          readOnly      = false
-        },
-        {
-          sourceVolume  = "arangodb-data"
-          containerPath = "/var/lib/arangodb"
-          readOnly      = false
-        }
-      ]
-
-      environment = [
-        { name = "SERVICE_DNS", value = "${var.arangodb_sd_service_name}.${var.arangodb_sd_namespace}" },
-        { name = "STARTER_EXPECTED_COUNT", value = tostring(var.arangodb_desired_count) },
-        { name = "AGENCY_SIZE", value = tostring(var.arangodb_agency_size) },
-        { name = "ARANDGODB_OVERRIDE_DETECTED_TOTAL_MEMORY", value = "${var.arangodb_memory}M" },
-        { name = "ARANDGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES", value = tostring(local.arangodb_number_of_cores) },
-        { name = "STARTER_PEER_DISCOVERY_TIMEOUT", value = "120" },
-        { name = "STARTER_DATA_DIR_PATTERN", value = "/var/lib/arangodb/db%d" },
-        { name = "HEALTH_PROXY_AUTH_FILE", value = "/run/health-proxy/auth-header" }
-      ]
-
-      secrets = [
-        {
-          name      = "JWT_SECRET"
-          valueFrom = aws_secretsmanager_secret_version.arangodb_jwt_secret.arn
-        }
-      ]
-
-      logConfiguration = {
-        logDriver = "awslogs",
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.arangodb_log_group.name
-          awslogs-region        = var.region
-          awslogs-stream-prefix = "arangodb"
-        }
-      }
-    },
-    {
-      name      = "${var.arangodb_service_name}-health-proxy"
-      image     = "public.ecr.aws/docker/library/python:3.11-alpine"
-      essential = true
-
-      portMappings = [
-        {
-          containerPort = var.arangodb_health_proxy_port
-          hostPort      = var.arangodb_health_proxy_port
-          protocol      = "tcp"
-        }
-      ]
-
-      mountPoints = [
-        {
-          sourceVolume  = "health-proxy-auth"
-          containerPath = "/run/health-proxy"
-          readOnly      = true
-        }
-      ]
-
-      environment = [
-        { name = "HEALTH_PROXY_PORT", value = tostring(var.arangodb_health_proxy_port) },
-        { name = "HEALTH_PROXY_TARGET", value = "http://127.0.0.1:${var.arangodb_container_primary_port}${var.arangodb_health_check_path}" },
-        { name = "HEALTH_PROXY_AUTH_FILE", value = "/run/health-proxy/auth-header" }
-      ]
-
-      command = [
-        "python3",
-        "-u",
-        "-c",
-        <<-EOPY
-import http.server, urllib.request, urllib.error, os, sys
-TARGET = os.environ.get("HEALTH_PROXY_TARGET", "")
-PORT = int(os.environ.get("HEALTH_PROXY_PORT", "18080"))
-AUTH_FILE = os.environ.get("HEALTH_PROXY_AUTH_FILE", "").strip()
-
-def log(msg):
-    sys.stderr.write(f"health-proxy: {msg}\\n")
-
-def load_authorization_header():
-    if not AUTH_FILE:
-        raise RuntimeError("missing auth header file path")
-    try:
-        with open(AUTH_FILE, "r") as handle:
-            content = handle.read().strip()
-    except OSError as exc:
-        raise RuntimeError(f"failed to read auth header: {exc}") from exc
-    if not content:
-        raise RuntimeError("empty auth header")
-    if content.lower().startswith("authorization:"):
-        return content.split(":", 1)[1].strip()
-    return content
-
-def fetch_status():
-    if not TARGET:
-        raise RuntimeError("missing target")
-    req = urllib.request.Request(TARGET)
-    req.add_header("Authorization", load_authorization_header())
-    with urllib.request.urlopen(req, timeout=5) as resp:
-        body = resp.read()
-        return resp.status, body
-
-class Handler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path not in ("/", "/health", "/_health"):
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b"not found")
-            return
-        try:
-            status, body = fetch_status()
-            healthy = 200 <= status < 400
-            log(f"{self.client_address[0]} {self.command} {self.path} status={status} healthy={healthy}")
-        except Exception as exc:
-            log(f"{self.client_address[0]} {self.command} {self.path} error={exc}")
-            self.send_response(503)
-            self.end_headers()
-            self.wfile.write(str(exc).encode())
-            return
-        self.send_response(200 if healthy else status)
-        self.end_headers()
-        if body:
-            self.wfile.write(body)
-
-    def log_message(self, fmt, *args):
-        pass
-
-http.server.ThreadingHTTPServer(("", PORT), Handler).serve_forever()
-EOPY
-      ]
-
-      logConfiguration = {
-        logDriver = "awslogs",
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.arangodb_log_group.name
-          awslogs-region        = var.region
-          awslogs-stream-prefix = "arangodb-health"
-        }
-      }
-    }
-  ])
+  container_definitions = jsonencode(local.arangodb_container_definitions)
 }
 
 resource "aws_ecs_service" "arangodb" {
@@ -250,6 +88,12 @@ resource "aws_ecs_service" "arangodb" {
     container_port   = var.arangodb_container_primary_port
   }
 
+  load_balancer {
+    target_group_arn = aws_lb_target_group.arangodb_internal_tg.arn
+    container_name   = "${var.arangodb_service_name}-container"
+    container_port   = var.arangodb_container_primary_port
+  }
+
   ordered_placement_strategy {
     type  = "spread"
     field = "attribute:ecs.availability-zone"
@@ -264,8 +108,9 @@ resource "aws_ecs_service" "arangodb" {
   }
 
   force_new_deployment       = true
-  deployment_maximum_percent = 200
-  depends_on                 = [aws_lb_listener.arangodb_listener]
+  deployment_minimum_healthy_percent = 67
+  deployment_maximum_percent = 167
+  depends_on                 = [aws_lb_listener.arangodb_listener, aws_lb_listener.arangodb_internal_listener]
 }
 
 resource "aws_lb" "arangodb_alb" {
@@ -277,12 +122,45 @@ resource "aws_lb" "arangodb_alb" {
   tags               = var.tags
 }
 
+resource "aws_lb" "arangodb_internal_alb" {
+  name               = "${var.arangodb_service_name}-internal-alb"
+  load_balancer_type = "application"
+  internal           = true
+  security_groups    = [aws_security_group.arangodb_internal_alb_sg.id]
+  subnets            = var.private_subnet_ids
+  tags               = var.tags
+}
+
 resource "aws_lb_target_group" "arangodb_tg" {
   name        = "${var.arangodb_service_name}-tg"
   port        = var.arangodb_container_primary_port
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
+
+  deregistration_delay = 60
+
+  health_check {
+    port                = tostring(var.arangodb_health_proxy_port)
+    path                = "/health"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    interval            = 30
+    timeout             = 5
+    matcher             = "200-399"
+  }
+  tags = var.tags
+}
+
+resource "aws_lb_target_group" "arangodb_internal_tg" {
+  name        = "${var.arangodb_service_name}-internal-tg"
+  port        = var.arangodb_container_primary_port
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  deregistration_delay = 60
+
   health_check {
     port                = tostring(var.arangodb_health_proxy_port)
     path                = "/health"
@@ -305,6 +183,16 @@ resource "aws_lb_listener" "arangodb_listener" {
   }
 }
 
+resource "aws_lb_listener" "arangodb_internal_listener" {
+  load_balancer_arn = aws_lb.arangodb_internal_alb.arn
+  port              = 80
+  protocol          = "HTTP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.arangodb_internal_tg.arn
+  }
+}
+
 resource "aws_security_group" "arangodb_alb_sg" {
   name        = "${var.arangodb_service_name}-alb-sg"
   description = "Allow HTTP access to ArangoDB from known Public IPs"
@@ -314,6 +202,19 @@ resource "aws_security_group" "arangodb_alb_sg" {
     var.tags,
     {
       Name = "${var.arangodb_service_name}-alb-sg"
+    }
+  )
+}
+
+resource "aws_security_group" "arangodb_internal_alb_sg" {
+  name        = "${var.arangodb_service_name}-internal-alb-sg"
+  description = "Allow private ALB access to ArangoDB from private subnets"
+  vpc_id      = var.vpc_id
+
+  tags = merge(
+    var.tags,
+    {
+      Name = "${var.arangodb_service_name}-internal-alb-sg"
     }
   )
 }
@@ -328,12 +229,32 @@ resource "aws_security_group_rule" "arangodb_alb_sg_ingress_http" {
   description       = "Allow HTTP access from known Public IPs"
 }
 
+resource "aws_security_group_rule" "arangodb_internal_alb_sg_ingress_runner" {
+  type              = "ingress"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  security_group_id = aws_security_group.arangodb_internal_alb_sg.id
+  cidr_blocks       = var.private_subnet_cidrs
+  description       = "Allow HTTP access from private subnets"
+}
+
 resource "aws_security_group_rule" "arangodb_alb_sg_egress_all" {
   type              = "egress"
   from_port         = 0
   to_port           = 65535
   protocol          = "-1"
   security_group_id = aws_security_group.arangodb_alb_sg.id
+  cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow outbound TCP traffic to anywhere"
+}
+
+resource "aws_security_group_rule" "arangodb_internal_alb_sg_egress_all" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 65535
+  protocol          = "-1"
+  security_group_id = aws_security_group.arangodb_internal_alb_sg.id
   cidr_blocks       = ["0.0.0.0/0"]
   description       = "Allow outbound TCP traffic to anywhere"
 }
@@ -372,6 +293,16 @@ resource "aws_security_group_rule" "arangodb_ecs_sg_alb_ingress_8528" {
   description              = "Allow HTTP access from ALB"
 }
 
+resource "aws_security_group_rule" "arangodb_ecs_sg_internal_alb_ingress_8528" {
+  type                     = "ingress"
+  from_port                = var.arangodb_container_primary_port
+  to_port                  = var.arangodb_container_primary_port
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.arangodb_ecs_sg.id
+  source_security_group_id = aws_security_group.arangodb_internal_alb_sg.id
+  description              = "Allow HTTP access from internal ALB"
+}
+
 resource "aws_security_group_rule" "arangodb_ecs_sg_alb_ingress_health" {
   type                     = "ingress"
   from_port                = var.arangodb_health_proxy_port
@@ -382,6 +313,15 @@ resource "aws_security_group_rule" "arangodb_ecs_sg_alb_ingress_health" {
   description              = "Allow ALB health checks to reach the proxy sidecar"
 }
 
+resource "aws_security_group_rule" "arangodb_ecs_sg_internal_alb_ingress_health" {
+  type                     = "ingress"
+  from_port                = var.arangodb_health_proxy_port
+  to_port                  = var.arangodb_health_proxy_port
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.arangodb_ecs_sg.id
+  source_security_group_id = aws_security_group.arangodb_internal_alb_sg.id
+  description              = "Allow internal ALB health checks to reach the proxy sidecar"
+}
 resource "aws_security_group_rule" "arangodb_ecs_sg_egress_all" {
   type              = "egress"
   from_port         = 0
