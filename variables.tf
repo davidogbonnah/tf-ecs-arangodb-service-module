@@ -138,9 +138,10 @@ variable "private_subnet_ids" {
   type        = list(string)
 }
 
-variable "public_network_ip_range" {
+variable "public_access_cidrs" {
   description = "CIDR blocks allowed to access the ArangoDB ALB."
   type        = list(string)
+  default     = []
 }
 
 variable "public_subnet_ids" {
