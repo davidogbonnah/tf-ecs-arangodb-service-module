@@ -171,6 +171,7 @@ variable "region" {
 variable "tags" {
   description = "Tags applied to module resources."
   type        = map(string)
+  default     = {}
 }
 
 variable "task_execution_role" {
