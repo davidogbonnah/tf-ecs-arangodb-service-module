@@ -1,3 +1,13 @@
+locals {
+  tags = {
+    Environment  = var.environment
+    Project      = "${var.org_name} Cloud Management Platform"
+    Owner        = "${var.org_name} Platform Team"
+    ManagedBy    = "Terraform"
+    ContactEmail = var.org_owner_email
+  }
+}
+
 resource "random_password" "arangodb_jwt_secret" {
   length  = 64
   special = false # keep it simple for files/env vars
@@ -6,7 +16,7 @@ resource "random_password" "arangodb_jwt_secret" {
 resource "aws_secretsmanager_secret" "arangodb_jwt_secret" {
   name        = "arangodb-jwt-secret"
   description = "ArangoDB JWT String Secret"
-  tags        = var.tags
+  tags        = merge(var.tags, local.tags)
 }
 
 resource "aws_secretsmanager_secret_version" "arangodb_jwt_secret" {
@@ -18,7 +28,7 @@ resource "aws_cloudwatch_log_group" "arangodb_log_group" {
   name              = "/ecs/${var.arangodb_service_name}"
   retention_in_days = 14
   tags = merge(
-    var.tags,
+    var.tags, local.tags,
     {
       Name = "/ecs/${var.arangodb_service_name}"
     }
@@ -62,6 +72,13 @@ resource "aws_ecs_task_definition" "arangodb_td" {
   }
 
   container_definitions = jsonencode(local.arangodb_container_definitions)
+
+  tags = merge(
+    var.tags, local.tags,
+    {
+      Name = "${var.arangodb_service_name}-td"
+    }
+  )
 }
 
 resource "aws_ecs_service" "arangodb" {
@@ -110,6 +127,14 @@ resource "aws_ecs_service" "arangodb" {
   force_new_deployment               = true
   deployment_minimum_healthy_percent = 67
   deployment_maximum_percent         = 167
+
+  tags = merge(
+    var.tags, local.tags,
+    {
+      Name = "${var.arangodb_service_name}-service"
+    }
+  )
+
   depends_on                         = [aws_lb_listener.arangodb_listener, aws_lb_listener.arangodb_internal_listener]
 }
 
@@ -199,7 +224,7 @@ resource "aws_security_group" "arangodb_alb_sg" {
   vpc_id      = var.vpc_id
 
   tags = merge(
-    var.tags,
+    var.tags, local.tags,
     {
       Name = "${var.arangodb_service_name}-alb-sg"
     }
@@ -212,7 +237,7 @@ resource "aws_security_group" "arangodb_internal_alb_sg" {
   vpc_id      = var.vpc_id
 
   tags = merge(
-    var.tags,
+    var.tags, local.tags,
     {
       Name = "${var.arangodb_service_name}-internal-alb-sg"
     }
@@ -265,7 +290,7 @@ resource "aws_security_group" "arangodb_ecs_sg" {
   vpc_id      = var.vpc_id
 
   tags = merge(
-    var.tags,
+    var.tags, local.tags,
     {
       Name = "${var.arangodb_service_name}-sg"
     }

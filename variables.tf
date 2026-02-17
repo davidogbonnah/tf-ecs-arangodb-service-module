@@ -1,3 +1,17 @@
+variable "environment" {
+  description = "Deployment environment (e.g., dev, staging, prod)."
+  type        = string
+}
+
+variable "org_name" {
+  description = "Organization name for tagging."
+  type        = string
+}
+
+variable "org_owner_email" {
+  description = "Contact email for the organization owner, used in resource tagging."
+  type        = string
+}
 
 variable "arangodb_agency_size" {
   description = "Agency size for the ArangoDB starter cluster."
