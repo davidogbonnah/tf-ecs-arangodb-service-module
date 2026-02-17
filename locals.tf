@@ -1,6 +1,6 @@
 locals {
   arangodb_number_of_cores = var.arangodb_cpu / 1024
-  
+
   arangodb_port_mappings = [
     for port in var.arangodb_container_ports : {
       containerPort = tonumber(port)
@@ -8,12 +8,12 @@ locals {
       protocol      = "tcp"
     }
   ]
-  
+
   arangodb_bootstrap_secret_names = {
     for env_name, secret in var.arangodb_bootstrap_password_secrets :
     env_name => secret if !startswith(secret, "arn:")
   }
-  
+
   arangodb_bootstrap_secret_arns_direct = {
     for env_name, secret in var.arangodb_bootstrap_password_secrets :
     env_name => secret if startswith(secret, "arn:")
@@ -23,9 +23,9 @@ locals {
     local.arangodb_bootstrap_secret_arns_direct,
     { for env_name, secret in data.aws_secretsmanager_secret.arangodb_bootstrap : env_name => secret.arn }
   )
-  
+
   arangodb_bootstrap_secret_arns = values(local.arangodb_bootstrap_secret_arn_map)
-  
+
   arangodb_bootstrap_iam_statements = concat(
     length(local.arangodb_bootstrap_secret_arns) > 0 ? [
       {
@@ -101,7 +101,7 @@ locals {
       }
     }
   }
-  
+
   # Health proxy sidecar container definition
   arangodb_health_proxy_container = {
     name      = "${var.arangodb_service_name}-health-proxy"

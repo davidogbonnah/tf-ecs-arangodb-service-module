@@ -1,60 +1,62 @@
+
 variable "arangodb_agency_size" {
   description = "Agency size for the ArangoDB starter cluster."
   type        = number
+  default     = 3
 }
 
 variable "arangodb_container_ports" {
   description = "Container ports exposed by the ArangoDB task."
   type        = list(string)
+  default     = ["8528", "8529", "8530", "8531"]
 }
 
 variable "arangodb_container_primary_port" {
   description = "Primary ArangoDB coordinator port behind the ALB."
   type        = number
-}
-
-variable "private_subnet_cidrs" {
-  description = "CIDR blocks for private subnets allowed to access the internal ALB."
-  type        = list(string)
-  validation {
-    condition     = length(var.private_subnet_cidrs) > 0
-    error_message = "private_subnet_cidrs must contain at least one CIDR block."
-  }
+  default     = 8529
 }
 
 variable "arangodb_cpu" {
   description = "CPU units for the ArangoDB task."
   type        = number
+  default     = 254 # 0.25 vCPU
 }
 
 variable "arangodb_data_volume_size" {
   description = "EBS data volume size in GiB for each ECS worker."
   type        = number
+  default     = 10
 }
 
 variable "arangodb_data_volume_type" {
   description = "EBS volume type for ArangoDB data."
   type        = string
+  default     = "gp3"
 }
 
 variable "arangodb_desired_count" {
   description = "Desired number of ArangoDB tasks."
   type        = number
+  default     = 3
 }
 
 variable "arangodb_health_check_path" {
   description = "HTTP path used for ArangoDB health checks."
   type        = string
+  default     = "/_admin/status"
 }
 
 variable "arangodb_health_proxy_port" {
   description = "Port exposed by the health-proxy sidecar."
   type        = number
+  default     = 18080
 }
 
 variable "arangodb_memory" {
   description = "Memory (MiB) for the ArangoDB task."
   type        = number
+  default     = 512 # 0.5 GB
 }
 
 variable "arangodb_repository_url" {
@@ -80,11 +82,13 @@ variable "arangodb_service_name" {
 variable "arangodb_tag" {
   description = "ArangoDB image tag."
   type        = string
+  default     = "3.12"
 }
 
 variable "arangodb_bootstrap_enabled" {
   description = "Whether to run the ArangoDB bootstrap sidecar."
   type        = bool
+  default     = false
 }
 
 variable "arangodb_bootstrap_config" {
@@ -105,21 +109,23 @@ variable "arangodb_bootstrap_config" {
       type = optional(number)
     }))
   })
+  default = {
+    users       = []
+    databases   = []
+    collections = []
+  }
 }
 
 variable "arangodb_bootstrap_password_secrets" {
   description = "Map of env var name -> Secrets Manager secret name or ARN for bootstrap passwords."
   type        = map(string)
+  default     = {}
 }
 
 variable "arangodb_bootstrap_kms_key_arns" {
   description = "Optional KMS key ARNs used to encrypt the SSM parameters."
   type        = list(string)
-}
-
-variable "cluster_id" {
-  description = "ECS cluster ID where ArangoDB is deployed."
-  type        = string
+  default     = []
 }
 
 variable "cluster_name" {
@@ -157,13 +163,8 @@ variable "task_execution_role" {
   type        = string
 }
 
-variable "task_execution_role_arn" {
-  description = "IAM execution role ARN for ECS tasks."
-  type        = string
-}
-
-variable "task_role_arn" {
-  description = "IAM task role ARN for ECS tasks."
+variable "task_role" {
+  description = "IAM task role name for ECS tasks."
   type        = string
 }
 

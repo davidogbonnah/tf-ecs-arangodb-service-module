@@ -63,7 +63,7 @@ resource "aws_autoscaling_group" "arangodb_ecs_workers_asg" {
   vpc_zone_identifier = var.private_subnet_ids
 
   protect_from_scale_in = true
-  
+
   launch_template {
     id      = aws_launch_template.arangodb_ecs_workers.id
     version = "$Latest"

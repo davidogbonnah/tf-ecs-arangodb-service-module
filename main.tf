@@ -48,8 +48,8 @@ resource "aws_ecs_task_definition" "arangodb_td" {
   requires_compatibilities = ["EC2"]
   cpu                      = var.arangodb_cpu
   memory                   = var.arangodb_memory
-  execution_role_arn       = var.task_execution_role_arn
-  task_role_arn            = var.task_role_arn
+  execution_role_arn       = data.aws_iam_role.arangodb_task_execution_role.arn
+  task_role_arn            = data.aws_iam_role.arangodb_task_role.arn
 
   volume {
     name      = "health-proxy-auth"
@@ -66,7 +66,7 @@ resource "aws_ecs_task_definition" "arangodb_td" {
 
 resource "aws_ecs_service" "arangodb" {
   name                              = "arangodb-cluster-service"
-  cluster                           = var.cluster_id
+  cluster                           = data.aws_ecs_cluster.arangodb_cluster.id
   task_definition                   = aws_ecs_task_definition.arangodb_td.arn
   desired_count                     = var.arangodb_desired_count
   health_check_grace_period_seconds = 300
@@ -107,10 +107,10 @@ resource "aws_ecs_service" "arangodb" {
     registry_arn = aws_service_discovery_service.arangodb_starters.arn
   }
 
-  force_new_deployment       = true
+  force_new_deployment               = true
   deployment_minimum_healthy_percent = 67
-  deployment_maximum_percent = 167
-  depends_on                 = [aws_lb_listener.arangodb_listener, aws_lb_listener.arangodb_internal_listener]
+  deployment_maximum_percent         = 167
+  depends_on                         = [aws_lb_listener.arangodb_listener, aws_lb_listener.arangodb_internal_listener]
 }
 
 resource "aws_lb" "arangodb_alb" {
@@ -235,7 +235,7 @@ resource "aws_security_group_rule" "arangodb_internal_alb_sg_ingress_runner" {
   to_port           = 80
   protocol          = "tcp"
   security_group_id = aws_security_group.arangodb_internal_alb_sg.id
-  cidr_blocks       = var.private_subnet_cidrs
+  cidr_blocks       = data.aws_subnet.private_subnets[*].cidr_block
   description       = "Allow HTTP access from private subnets"
 }
 
