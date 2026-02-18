@@ -20,7 +20,7 @@ resource "aws_launch_template" "arangodb_ecs_workers" {
         echo "$DATA_DEVICE $MOUNT_POINT ext4 defaults,nofail 0 2" >> /etc/fstab
       fi
     fi
-    echo ECS_CLUSTER=${var.cluster_name} >> /etc/ecs/ecs.config
+    echo ECS_CLUSTER=${local.cluster_name} >> /etc/ecs/ecs.config
     EOF
   )
 

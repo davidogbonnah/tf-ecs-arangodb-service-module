@@ -1,4 +1,6 @@
 locals {
+  cluster_name = regexreplace(var.cluster_id, "^.*/", "")
+
   arangodb_number_of_cores = var.arangodb_cpu / 1024
 
   arangodb_port_mappings = [
