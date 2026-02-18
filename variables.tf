@@ -174,13 +174,13 @@ variable "tags" {
   default     = {}
 }
 
-variable "task_execution_role" {
-  description = "IAM execution role name for ECS tasks."
+variable "task_execution_role_arn" {
+  description = "IAM execution role ARN for ECS tasks."
   type        = string
 }
 
-variable "task_role" {
-  description = "IAM task role name for ECS tasks."
+variable "task_role_arn" {
+  description = "IAM task role ARN for ECS tasks."
   type        = string
 }
 

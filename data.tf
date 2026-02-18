@@ -8,14 +8,6 @@ data "aws_ami" "arangodb_ecs_ami" {
   }
 }
 
-data "aws_iam_role" "arangodb_task_execution_role" {
-  name = var.task_execution_role
-}
-
-data "aws_iam_role" "arangodb_task_role" {
-  name = var.task_role
-}
-
 data "aws_secretsmanager_secret" "arangodb_bootstrap" {
   for_each = local.arangodb_bootstrap_secret_names
 

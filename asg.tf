@@ -93,17 +93,6 @@ resource "aws_ecs_capacity_provider" "arangodb_ecs_workers" {
   }
 }
 
-resource "aws_ecs_cluster_capacity_providers" "cloud_management_cluster" {
-  cluster_name       = var.cluster_name
-  capacity_providers = [aws_ecs_capacity_provider.arangodb_ecs_workers.name]
-
-  default_capacity_provider_strategy {
-    capacity_provider = aws_ecs_capacity_provider.arangodb_ecs_workers.name
-    base              = 0
-    weight            = 1
-  }
-}
-
 resource "aws_iam_role" "arangodb_ecs_instance_role" {
   name = "arangodb-ecs-instance-role"
 

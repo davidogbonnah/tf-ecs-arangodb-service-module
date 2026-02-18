@@ -6,6 +6,8 @@ locals {
     ManagedBy    = "Terraform"
     ContactEmail = var.org_owner_email
   }
+
+  task_execution_role_name = regexreplace(var.task_execution_role_arn, "^.*role/", "")
 }
 
 resource "random_password" "arangodb_jwt_secret" {
@@ -58,8 +60,8 @@ resource "aws_ecs_task_definition" "arangodb_td" {
   requires_compatibilities = ["EC2"]
   cpu                      = var.arangodb_cpu
   memory                   = var.arangodb_memory
-  execution_role_arn       = data.aws_iam_role.arangodb_task_execution_role.arn
-  task_role_arn            = data.aws_iam_role.arangodb_task_role.arn
+  execution_role_arn       = var.task_execution_role_arn
+  task_role_arn            = var.task_role_arn
 
   volume {
     name      = "health-proxy-auth"
@@ -260,7 +262,7 @@ resource "aws_security_group_rule" "arangodb_internal_alb_sg_ingress_runner" {
   to_port           = 80
   protocol          = "tcp"
   security_group_id = aws_security_group.arangodb_internal_alb_sg.id
-  cidr_blocks       = data.aws_subnet.private_subnets[*].cidr_block
+  cidr_blocks       = values(data.aws_subnet.private_subnets)[*].cidr_block
   description       = "Allow HTTP access from private subnets"
 }
 
