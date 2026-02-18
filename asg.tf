@@ -51,7 +51,12 @@ resource "aws_launch_template" "arangodb_ecs_workers" {
 
   tag_specifications {
     resource_type = "instance"
-    tags          = var.tags
+    tags          = merge(
+      var.tags, local.tags,
+      {
+        Name = "${var.arangodb_service_name}-launch-template"
+      }
+    )
   }
 }
 
