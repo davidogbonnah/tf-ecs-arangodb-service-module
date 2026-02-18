@@ -142,8 +142,8 @@ variable "arangodb_bootstrap_kms_key_arns" {
   default     = []
 }
 
-variable "cluster_name" {
-  description = "ECS cluster name used by ECS agent bootstrap."
+variable "cluster_id" {
+  description = "ECS cluster ID where the OPA service is deployed."
   type        = string
 }
 
