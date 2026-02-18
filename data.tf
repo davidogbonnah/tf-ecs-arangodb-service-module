@@ -14,10 +14,6 @@ data "aws_secretsmanager_secret" "arangodb_bootstrap" {
   name = each.value
 }
 
-data "aws_ecs_cluster" "arangodb_cluster" {
-  cluster_name = var.cluster_name
-}
-
 data "aws_subnet" "private_subnets" {
   for_each = toset(var.private_subnet_ids)
 

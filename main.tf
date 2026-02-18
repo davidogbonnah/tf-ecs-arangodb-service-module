@@ -73,7 +73,7 @@ resource "aws_ecs_task_definition" "arangodb_td" {
 
 resource "aws_ecs_service" "arangodb" {
   name                              = "arangodb-cluster-service"
-  cluster                           = data.aws_ecs_cluster.arangodb_cluster.id
+  cluster                           = var.cluster_id
   task_definition                   = aws_ecs_task_definition.arangodb_td.arn
   desired_count                     = var.arangodb_desired_count
   health_check_grace_period_seconds = 300
