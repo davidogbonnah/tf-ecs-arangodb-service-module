@@ -1,5 +1,15 @@
 locals {
-  cluster_name = regexreplace(var.cluster_id, "^.*/", "")
+  tags = {
+    Environment  = var.environment
+    Project      = "${var.org_name} Cloud Management Platform"
+    Owner        = "${var.org_name} Platform Team"
+    ManagedBy    = "Terraform"
+    ContactEmail = var.org_owner_email
+  }
+
+  task_execution_role_name = element(reverse(split("/", var.task_execution_role_arn)), 0)
+
+  cluster_name = split("/", var.cluster_id)[1]
 
   arangodb_number_of_cores = var.arangodb_cpu / 1024
 

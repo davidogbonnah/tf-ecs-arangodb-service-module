@@ -1,15 +1,3 @@
-locals {
-  tags = {
-    Environment  = var.environment
-    Project      = "${var.org_name} Cloud Management Platform"
-    Owner        = "${var.org_name} Platform Team"
-    ManagedBy    = "Terraform"
-    ContactEmail = var.org_owner_email
-  }
-
-  task_execution_role_name = regexreplace(var.task_execution_role_arn, "^.*role/", "")
-}
-
 resource "random_password" "arangodb_jwt_secret" {
   length  = 64
   special = false # keep it simple for files/env vars
