@@ -309,6 +309,14 @@ def password_for(username):
         raise RuntimeError(f"empty password for user {username} from {env}")
     return value
 
+def grant_database_access(dbname, username):
+    payload = {"grant": "ro"}
+    status, _ = request("PUT", f"/_api/user/{username}/database/{dbname}", payload)
+    if status == 200:
+        log(f"Granted user {username} access to database {dbname}")
+    else:
+        log(f"Failed to grant user {username} access to database {dbname}, status={status}")
+
 for user in users:
     if user["username"] == "root":
         log("Updating root user password, assuming it already exists")
@@ -347,7 +355,9 @@ for db in databases:
     payload = {"name": db["name"], "users": db_users}
     status, _ = request("POST", "/_api/database", payload)
     if status == 409:
-        log(f"Database {db['name']} already exists, skipping")
+        log(f"Database {db['name']} already exists, granting access to configured users")
+        for db_user in db_users:
+            grant_database_access(db["name"], db_user["username"])
     elif status == 201:
         log(f"Added database {db['name']}")
 
