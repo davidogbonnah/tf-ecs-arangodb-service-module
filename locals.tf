@@ -275,9 +275,11 @@ def request(method, path, body=None, ok=(200, 201, 202, 409)):
         with urllib.request.urlopen(req, timeout=5) as resp:
             return resp.status, resp.read()
     except urllib.error.HTTPError as exc:
+        body = exc.read()
         if exc.code in ok:
-            return exc.code, exc.read()
-        raise
+            return exc.code, body
+        detail = body.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"{method} {path} failed with status={exc.code} body={detail or '<empty>'}") from exc
 
 def wait_ready():
     for _ in range(120):
@@ -352,15 +354,15 @@ for db in databases:
             "passwd": password_for(username),
             "active": True,
         })
+    if db["name"] == "_system":
+        log("System database is built-in, granting access to configured users")
+        for db_user in db_users:
+            grant_database_access(db["name"], db_user["username"])
+        continue
     payload = {"name": db["name"], "users": db_users}
     status, _ = request("POST", "/_api/database", payload)
     if status == 409:
-        if db["name"] == "_system":
-            log("System database already exists, granting access to configured users")
-            for db_user in db_users:
-                grant_database_access(db["name"], db_user["username"])
-        else:
-            log(f"Database {db['name']} already exists, skipping")
+        log(f"Database {db['name']} already exists, skipping")
     elif status == 201:
         log(f"Added database {db['name']}")
 
