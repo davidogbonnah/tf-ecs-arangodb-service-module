@@ -310,7 +310,7 @@ def password_for(username):
     return value
 
 def grant_database_access(dbname, username):
-    payload = {"grant": "ro"}
+    payload = {"grant": "rw"}
     status, _ = request("PUT", f"/_api/user/{username}/database/{dbname}", payload)
     if status == 200:
         log(f"Granted user {username} access to database {dbname}")
