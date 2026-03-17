@@ -292,6 +292,17 @@ def wait_ready():
         time.sleep(2)
     return False
 
+def wait_database_ready(dbname):
+    for _ in range(60):
+        try:
+            status, _ = request("GET", f"/_db/{dbname}/_api/version", ok=(200, 404, 503))
+            if status == 200:
+                return True
+        except Exception:
+            pass
+        time.sleep(2)
+    return False
+
 if not wait_ready():
     raise SystemExit("timed out waiting for ArangoDB")
 
@@ -301,6 +312,7 @@ databases = config.get("databases", [])
 collections = config.get("collections", [])
 
 user_password_env = {u["username"]: u["password_env"] for u in users}
+collection_ready_databases = {"_system"}
 
 def password_for(username):
     env = user_password_env.get(username)
@@ -365,8 +377,14 @@ for db in databases:
         log(f"Database {db['name']} already exists, skipping")
     elif status == 201:
         log(f"Added database {db['name']}")
+        if not wait_database_ready(db["name"]):
+            raise RuntimeError(f"database {db['name']} was created but did not become ready in time")
+        collection_ready_databases.add(db["name"])
 
 for col in collections:
+    if col["db"] not in collection_ready_databases:
+        log(f"Skipping collection {col['name']} in database {col['db']} because this run did not create that database")
+        continue
     payload = {"name": col["name"]}
     col_type = col.get("type")
     if col_type is not None:
@@ -374,7 +392,7 @@ for col in collections:
     status, _ = request("POST", f"/_db/{col['db']}/_api/collection", payload)
     if status == 409:
         log(f"Collection {col['name']} in database {col['db']} already exists, skipping")
-    elif status == 200:
+    elif status in (200, 201, 202):
         log(f"Added collection {col['name']} in database {col['db']}")
 
 log("ArangoDB Bootstrap complete")
