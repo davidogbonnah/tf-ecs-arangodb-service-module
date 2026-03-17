@@ -8,6 +8,11 @@ resource "aws_launch_template" "arangodb_ecs_workers" {
     DATA_DEVICE="/dev/xvdb"
     MOUNT_POINT="/var/lib/arangodb"
 
+    cat >/etc/sysctl.d/99-arangodb.conf <<'SYSCTL'
+    vm.max_map_count=128000
+    SYSCTL
+    sysctl --system
+
     if [ -b "$DATA_DEVICE" ]; then
       if ! blkid "$DATA_DEVICE" >/dev/null 2>&1; then
         mkfs -t ext4 "$DATA_DEVICE"
@@ -51,7 +56,7 @@ resource "aws_launch_template" "arangodb_ecs_workers" {
 
   tag_specifications {
     resource_type = "instance"
-    tags          = merge(
+    tags = merge(
       var.tags, local.tags,
       {
         Name = "${var.arangodb_service_name}-launch-template"

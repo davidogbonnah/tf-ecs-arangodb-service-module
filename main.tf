@@ -110,13 +110,19 @@ resource "aws_ecs_service" "arangodb" {
     field = "instanceId"
   }
 
+  placement_constraints {
+    type = "distinctInstance"
+  }
+
   service_registries {
     registry_arn = aws_service_discovery_service.arangodb_starters.arn
   }
 
+  # ArangoDB uses an instance-local host mount for persisted state, so
+  # replacements must stop before new tasks start on deployment.
   force_new_deployment               = true
-  deployment_minimum_healthy_percent = 67
-  deployment_maximum_percent         = 167
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent         = 100
 
   tags = merge(
     var.tags, local.tags,
@@ -125,7 +131,7 @@ resource "aws_ecs_service" "arangodb" {
     }
   )
 
-  depends_on                         = [aws_lb_listener.arangodb_listener, aws_lb_listener.arangodb_internal_listener]
+  depends_on = [aws_lb_listener.arangodb_listener, aws_lb_listener.arangodb_internal_listener]
 }
 
 resource "aws_lb" "arangodb_alb" {

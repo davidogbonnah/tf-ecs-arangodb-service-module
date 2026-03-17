@@ -64,11 +64,12 @@ locals {
 
   # Main ArangoDB container definition
   arangodb_main_container = {
-    name      = "${var.arangodb_service_name}-container"
-    image     = "${var.arangodb_repository_url}:${var.arangodb_tag}"
-    cpu       = var.arangodb_cpu
-    memory    = var.arangodb_memory
-    essential = true
+    name        = "${var.arangodb_service_name}-container"
+    image       = "${var.arangodb_repository_url}:${var.arangodb_tag}"
+    cpu         = var.arangodb_cpu
+    memory      = var.arangodb_memory
+    essential   = true
+    stopTimeout = var.arangodb_stop_timeout
 
     portMappings = local.arangodb_port_mappings
 

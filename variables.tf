@@ -99,6 +99,12 @@ variable "arangodb_tag" {
   default     = "3.12"
 }
 
+variable "arangodb_stop_timeout" {
+  description = "Grace period in seconds for the main ArangoDB container to stop cleanly."
+  type        = number
+  default     = 120
+}
+
 variable "arangodb_bootstrap_enabled" {
   description = "Whether to run the ArangoDB bootstrap sidecar."
   type        = bool
