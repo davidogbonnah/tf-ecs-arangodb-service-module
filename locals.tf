@@ -153,7 +153,7 @@ PORT = int(os.environ.get("HEALTH_PROXY_PORT", "18080"))
 AUTH_FILE = os.environ.get("HEALTH_PROXY_AUTH_FILE", "").strip()
 
 def log(msg):
-    sys.stderr.write(f"health-proxy: {msg}\\n")
+    sys.stderr.write(f"health-proxy: {msg}\n")
 
 def load_authorization_header():
     if not AUTH_FILE:
@@ -256,7 +256,7 @@ AUTH_FILE = os.environ.get("AUTH_HEADER_FILE", "/run/health-proxy/auth-header")
 BOOTSTRAP_JSON = os.environ.get("BOOTSTRAP_JSON", "{}")
 
 def log(msg):
-    sys.stderr.write(f"arangodb-bootstrap: {msg}\\n")
+    sys.stderr.write(f"arangodb-bootstrap: {msg}\n")
     sys.stderr.flush()
 
 def read_auth_header():
