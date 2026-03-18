@@ -84,6 +84,22 @@ resource "aws_autoscaling_group" "arangodb_ecs_workers_asg" {
     propagate_at_launch = true
   }
 
+  # Roll workers one at a time when the launch template changes so
+  # ECS can drain tasks cleanly and the agency can keep quorum.
+  instance_refresh {
+    strategy = "Rolling"
+
+    preferences {
+      min_healthy_percentage = 67
+      instance_warmup        = 300
+      auto_rollback          = true
+      checkpoint_percentages = [33, 66]
+      checkpoint_delay       = 300
+    }
+
+    triggers = ["launch_template"]
+  }
+
   force_delete = true
 }
 
@@ -92,13 +108,14 @@ resource "aws_ecs_capacity_provider" "arangodb_ecs_workers" {
 
   auto_scaling_group_provider {
     auto_scaling_group_arn         = aws_autoscaling_group.arangodb_ecs_workers_asg.arn
+    managed_draining               = "ENABLED"
     managed_termination_protection = "ENABLED"
 
     managed_scaling {
-      status                    = "DISABLED"
+      status                    = "ENABLED"
       target_capacity           = 100
       minimum_scaling_step_size = 1
-      maximum_scaling_step_size = 2
+      maximum_scaling_step_size = 1
     }
   }
 }
